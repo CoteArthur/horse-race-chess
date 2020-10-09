@@ -114,9 +114,15 @@ int main() {
 									// fermeture descripteurs inutilisés
 									close(pipeP0_P1[0]);
 									close(pipeP0_P1[1]);
-
+									
 									close(pipeP1_P2[0]);
 									close(pipeP1_P2[1]);
+
+									close(pipeP2_P3[0]);
+									close(pipeP2_P3[1]);
+
+									close(pipeP3_P0[0]);
+									close(pipeP3_P0[1]);
 
 									// attente mort des fils
 									while (wait(NULL)!=-1);
