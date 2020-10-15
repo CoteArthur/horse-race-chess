@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h> 
-#include <sys/wait.h> 
-#include <unistd.h> 
+#include <unistd.h>
 
 int main() {
     int p0, p1, p2, p3;
@@ -30,9 +28,11 @@ int main() {
 			close(pipeP0_P1[1]);
 
 			//write
-			
+			int dice = 0;
+			write(pipeP0_P1[1], &dice, sizeof(int));
 		default:
 			pipe(pipeP1_P2);
+
 			switch(fork()){
 				case -1:
 					perror("fork");
@@ -54,10 +54,14 @@ int main() {
 					close(pipeP1_P2[0]);
 					close(pipeP1_P2[1]);
 
-					//write
-					
+					//read
+					int dice;
+					read(pipeP0_P1[1], &dice, sizeof(int));
+					printf("Dice : %d", dice);
+
 				default:
 					pipe(pipeP2_P3);
+
 					switch(fork()){
 						case -1:
 							perror("fork");
@@ -131,4 +135,3 @@ int main() {
 					}
 			}
 	}
-}
