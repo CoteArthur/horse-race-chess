@@ -2,155 +2,145 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <math.h>
+#include <sys/wait.h>
+
+#define PIPES_LENGHT 24
+#define PLAYERS_SIZE 4*sizeof(int)
+
+void closePipes(int* pipes);
+int play (int player, int curPlaying);
 
 int main() {
-    int players[4] = {-1, -1, -1, -1};
-	int pipeP0_P1[2], pipeP1_P2[2], pipeP2_P3[2], pipeP3_P0[2];
+	pid_t bufferPid;
+    int pipes[PIPES_LENGHT],
+		players[] = {0, 0, 0, 0},
+		curPlaying = -1,
+		i;
 
-	srand(time(NULL));
+	for (i=0; i<PIPES_LENGHT; i+=2) pipe(pipes+i);
 
-	pipe(pipeP3_P0);
-	pipe(pipeP0_P1);
+	//Player 0
+	if ((bufferPid = fork()) == 0) {
+		read(pipes[8], &curPlaying, sizeof(int));
+		if (curPlaying == 0) {
+			players[0] = play(players[0], 0);
+			write(pipes[1], players, PLAYERS_SIZE);
 
-	switch(fork()){
-		case -1:
-			perror("fork");
-			exit(-1);
+			read(pipes[6], players, PLAYERS_SIZE); //TODO compare old and new players state
+			write(pipes[11], players, PLAYERS_SIZE);
+		} else {
+			read(pipes[6], players, PLAYERS_SIZE);
+			write(pipes[1], players, PLAYERS_SIZE);
+		}
+		closePipes(pipes);
+		exit(0);
+	} else if (bufferPid == -1) exit(-1);
+	
+	//Player 1
+	if ((bufferPid = fork()) == 0) {
+		read(pipes[12], &curPlaying, sizeof(int));
+		if (curPlaying == 1) {
+			players[1] = play(players[1], 1);
+			write(pipes[3], players, PLAYERS_SIZE);
 
-		case 0:	//p0
-			close(pipeP3_P0[0]);
-			close(pipeP3_P0[1]);
+			read(pipes[0], players, PLAYERS_SIZE);
+			write(pipes[15], players, PLAYERS_SIZE);
+		} else {
+			read(pipes[0], players, PLAYERS_SIZE);
+			write(pipes[3], players, PLAYERS_SIZE);
+		}
+		closePipes(pipes);
+		exit(0);
+	} else if (bufferPid == -1) exit(-1);
 
-			close(pipeP0_P1[0]);
+	//Player 2
+	if ((bufferPid = fork()) == 0) {
+		read(pipes[16], &curPlaying, sizeof(int));
+		if (curPlaying == 2) {
+			players[2] = play(players[2], 2);
+			write(pipes[5], players, PLAYERS_SIZE);
 
-			int diceRoll = (rand() % 6) + 1;
-            printf("Player 0 rolled a : %d\n", diceRoll);
+			read(pipes[2], players, PLAYERS_SIZE);
+			write(pipes[19], players, PLAYERS_SIZE);
+		} else {
+			read(pipes[2], players, PLAYERS_SIZE);
+			write(pipes[5], players, PLAYERS_SIZE);
+		}
+		closePipes(pipes);
+		exit(0);
+	} else if (bufferPid == -1) exit(-1);
 
-            if (players[0] == -1) {
-                if(diceRoll == 6) {
-                    players[0]++;
-                }
-            } else {
-                players[0] += diceRoll;
-            }
+	//Player 3
+	if ((bufferPid = fork()) == 0) {
+		read(pipes[20], &curPlaying, sizeof(int));
+		if (curPlaying == 3) {
+			players[3] = play(players[3], 3);
+			write(pipes[7], players, PLAYERS_SIZE);
 
-            printf("Player 0 is now at : %d\n\n", players[0]);
+			read(pipes[4], players, PLAYERS_SIZE);
+			write(pipes[23], players, PLAYERS_SIZE);
+		} else {
+			read(pipes[4], players, PLAYERS_SIZE);
+			write(pipes[7], players, PLAYERS_SIZE);
+		}
+		closePipes(pipes);
+		exit(0);
+	} else if (bufferPid == -1) exit(-1);
 
-			write(pipeP0_P1[1], players, 4*sizeof(int));
+	//Parent
+	curPlaying = 0;
+	for (i=9; i<=21; i+=4) write(pipes[i], &curPlaying, sizeof(int));
+	read(pipes[10], players, PLAYERS_SIZE);
+	printf("[%d, %d, %d, %d]\n\n", players[0], players[1], players[2], players[3]);
 
-			close(pipeP0_P1[1]);
+	closePipes(pipes);
+	while (wait(NULL)!=-1);
+	exit(0);
+}
 
-			exit(0);
+void closePipes(int* pipes) {
+	for (int i=0; i<PIPES_LENGHT; i++) close(pipes[i]);
+}
+
+int play (int horseValue, int curPlaying) {
+	srand(time(NULL) * getpid());
+	int diceRoll = (rand() % 6) + 1;
+	printf("Player %d rolled a : %d, ", curPlaying, diceRoll);
+
+	switch (horseValue)
+	{
+		case 0:
+		case 60:
+		case 61:
+			if (diceRoll == 6) horseValue++;
+			break;
+
+		case 55:
+			if (diceRoll == 1) horseValue++;
+			break;
+
+		case 56:
+			if (diceRoll == 2) horseValue++;
+			break;
+
+		case 57:
+			if (diceRoll == 3) horseValue++;
+			break;
+
+		case 58:
+			if (diceRoll == 4) horseValue++;
+			break;
+
+		case 59:
+			if (diceRoll == 5) horseValue++;
+			break;
+
 		default:
-			pipe(pipeP1_P2);
-
-			switch(fork()){
-				case -1:
-					perror("fork");
-					exit(-1);
-
-				case 0:	//p1
-					close(pipeP3_P0[0]);
-					close(pipeP3_P0[1]);
-
-					close(pipeP0_P1[1]);
-
-					close(pipeP1_P2[0]);
-
-					read(pipeP0_P1[0], players, 4*sizeof(int));
-
-					int diceRoll = (rand() % 6) + 1;
-                    printf("Player 1 rolled a : %d\n", diceRoll);
-
-                    if (players[1] == -1) {
-                        if(diceRoll == 6) {
-                            players[1]++;
-                        }
-                    } else {
-                        players[1] += diceRoll;
-                    }
-
-                    printf("Player 0 is now at : %d\n\n", players[0]);
-
-                    write(pipeP1_P2[1], players, 4*sizeof(int));
-
-					close(pipeP0_P1[0]);
-					close(pipeP1_P2[1]);
-
-					exit(0);
-				default:
-					pipe(pipeP2_P3);
-
-					switch(fork()){
-						case -1:
-							perror("fork");
-							exit(-1);
-
-						case 0:	//p2
-							close(pipeP3_P0[0]);
-							close(pipeP3_P0[1]);
-
-							close(pipeP0_P1[0]);
-							close(pipeP0_P1[1]);
-
-							close(pipeP1_P2[1]);
-
-							close(pipeP2_P3[0]);
-
-							int dice = -1;
-                            read(pipeP1_P2[0], &dice, sizeof(int));
-                            printf("dice value in p2: %d\n", dice);
-                            write(pipeP2_P3[1], &dice, sizeof(int));
-
-                            close(pipeP1_P2[0]);
-                            close(pipeP2_P3[1]);
-
-							exit(0);
-						default:
-							switch(fork()){
-								case -1:
-									perror("fork");
-									exit(-1);
-
-								case 0:	//p3
-									close(pipeP0_P1[0]);
-									close(pipeP0_P1[1]);
-
-									close(pipeP1_P2[0]);
-									close(pipeP1_P2[1]);
-
-									close(pipeP2_P3[1]);
-
-									close(pipeP3_P0[0]);
-
-									int dice = -1;
-                                    read(pipeP2_P3[0], &dice, sizeof(int));
-                                    printf("dice value in p3: %d\n", dice);
-                                    write(pipeP3_P0[1], &dice, sizeof(int));
-
-                                    close(pipeP2_P3[0]);
-                                    close(pipeP3_P0[1]);
-
-									exit(0);
-								default:
-									close(pipeP0_P1[0]);
-									close(pipeP0_P1[1]);
-
-									close(pipeP1_P2[0]);
-									close(pipeP1_P2[1]);
-
-									close(pipeP2_P3[0]);
-									close(pipeP2_P3[1]);
-
-									close(pipeP3_P0[0]);
-									close(pipeP3_P0[1]);
-
-									// attente mort des fils
-									while (wait(NULL)!=-1);
-
-									exit(0);
-							}
-						}
-					}
-			}
+			horseValue += diceRoll;
+			break;
 	}
+	printf("he's now at : %d\n", horseValue);
+	
+	return horseValue;
+}
