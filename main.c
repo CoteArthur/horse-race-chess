@@ -24,7 +24,6 @@ int main() {
 	while (1) {
 		//Player 0
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[8], &curPlaying, INT_SIZE);
 			if (curPlaying == 0) {
 				players[0] = play(players[0], 0);
 				token++;
@@ -42,7 +41,6 @@ int main() {
 		
 		//Player 1
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[12], &curPlaying, INT_SIZE);
 			if (curPlaying == 1) {
 				players[1] = play(players[1], 1);
 				token++;
@@ -60,7 +58,6 @@ int main() {
 
 		//Player 2
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[16], &curPlaying, INT_SIZE);
 			if (curPlaying == 2) {
 				players[2] = play(players[2], 2);
 				token++;
@@ -78,7 +75,6 @@ int main() {
 
 		//Player 3
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[20], &curPlaying, INT_SIZE);
 			if (curPlaying == 3) {
 				players[3] = play(players[3], 3);
 				token++;
@@ -95,8 +91,6 @@ int main() {
 		} else if (bufferPid == -1) exit(-1);
 
 		//Parent
-		for (i=9; i<=21; i+=4) write(pipes[i], &curPlaying, INT_SIZE);
-
 		switch (curPlaying)
 		{
 			case 0:
@@ -115,7 +109,7 @@ int main() {
 				break;
 		}
 		
-		printf("Player 0: %d\nPlayer 1: %d\nPlayer 2: %d\nPlayer 3: %d\n", players[0], players[1], players[2], players[3]);
+		printf("Player 0: %d\nPlayer 1: %d\nPlayer 2: %d\nPlayer 3: %d\n\n", players[0], players[1], players[2], players[3]);
 
 		if (players[curPlaying] == 62) {
 			printf("Player %d won\n", curPlaying);
