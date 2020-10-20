@@ -5,34 +5,36 @@
 #include <math.h>
 #include <sys/wait.h>
 
-#define NBPLAYERS 4
 #define PIPES_LENGHT 24
-#define PLAYERS_SIZE NBPLAYERS*sizeof(int)
+#define INT_SIZE sizeof(int)
 
-void closePipes(int* pipes);
-int play (int player, int curPlaying);
+void closePipes(int *);
+int play (int, int);
 
 int main() {
 	pid_t bufferPid;
     int pipes[PIPES_LENGHT],
 		players[] = {0, 0, 0, 0},
 		curPlaying = 0,
+		token = 0,
 		i;
 
 	for (i=0; i<PIPES_LENGHT; i+=2) pipe(pipes+i);
 
-	do {
+	while (1) {
 		//Player 0
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[8], &curPlaying, sizeof(int));
+			read(pipes[8], &curPlaying, INT_SIZE);
 			if (curPlaying == 0) {
 				players[0] = play(players[0], 0);
-				write(pipes[1], players, PLAYERS_SIZE);
-				read(pipes[6], players, PLAYERS_SIZE); //TODO compare old and new players state
-				write(pipes[11], players, PLAYERS_SIZE);
+				token++;
+				write(pipes[1], &token, INT_SIZE);
+				read(pipes[6], &token, INT_SIZE);
+				if (!token) exit(-1);
+				write(pipes[11], players, INT_SIZE);
 			} else {
-				read(pipes[6], players, PLAYERS_SIZE);
-				write(pipes[1], players, PLAYERS_SIZE);
+				read(pipes[6], &token, INT_SIZE);
+				write(pipes[1], &token, INT_SIZE);
 			}
 			closePipes(pipes);
 			exit(0);
@@ -40,15 +42,17 @@ int main() {
 		
 		//Player 1
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[12], &curPlaying, sizeof(int));
+			read(pipes[12], &curPlaying, INT_SIZE);
 			if (curPlaying == 1) {
 				players[1] = play(players[1], 1);
-				write(pipes[3], players, PLAYERS_SIZE);
-				read(pipes[0], players, PLAYERS_SIZE);
-				write(pipes[15], players, PLAYERS_SIZE);
+				token++;
+				write(pipes[3], &token, INT_SIZE);
+				read(pipes[0], &token, INT_SIZE);
+				if (!token) exit(-1);
+				write(pipes[15], players+1, INT_SIZE);
 			} else {
-				read(pipes[0], players, PLAYERS_SIZE);
-				write(pipes[3], players, PLAYERS_SIZE);
+				read(pipes[0], &token, INT_SIZE);
+				write(pipes[3], &token, INT_SIZE);
 			}
 			closePipes(pipes);
 			exit(0);
@@ -56,15 +60,17 @@ int main() {
 
 		//Player 2
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[16], &curPlaying, sizeof(int));
+			read(pipes[16], &curPlaying, INT_SIZE);
 			if (curPlaying == 2) {
 				players[2] = play(players[2], 2);
-				write(pipes[5], players, PLAYERS_SIZE);
-				read(pipes[2], players, PLAYERS_SIZE);
-				write(pipes[19], players, PLAYERS_SIZE);
+				token++;
+				write(pipes[5], &token, INT_SIZE);
+				read(pipes[2], &token, INT_SIZE);
+				if (!token) exit(-1);
+				write(pipes[19], players+2, INT_SIZE);
 			} else {
-				read(pipes[2], players, PLAYERS_SIZE);
-				write(pipes[5], players, PLAYERS_SIZE);
+				read(pipes[2], &token, INT_SIZE);
+				write(pipes[5], &token, INT_SIZE);
 			}
 			closePipes(pipes);
 			exit(0);
@@ -72,36 +78,38 @@ int main() {
 
 		//Player 3
 		if ((bufferPid = fork()) == 0) {
-			read(pipes[20], &curPlaying, sizeof(int));
+			read(pipes[20], &curPlaying, INT_SIZE);
 			if (curPlaying == 3) {
 				players[3] = play(players[3], 3);
-				write(pipes[7], players, PLAYERS_SIZE);
-				read(pipes[4], players, PLAYERS_SIZE);
-				write(pipes[23], players, PLAYERS_SIZE);
+				token++;
+				write(pipes[7], &token, INT_SIZE);
+				read(pipes[4], &token, INT_SIZE);
+				if (!token) exit(-1);
+				write(pipes[23], players+3, INT_SIZE);
 			} else {
-				read(pipes[4], players, PLAYERS_SIZE);
-				write(pipes[7], players, PLAYERS_SIZE);
+				read(pipes[4], &token, INT_SIZE);
+				write(pipes[7], &token, INT_SIZE);
 			}
 			closePipes(pipes);
 			exit(0);
 		} else if (bufferPid == -1) exit(-1);
 
 		//Parent
-		for (i=9; i<=21; i+=4) write(pipes[i], &curPlaying, sizeof(int));
+		for (i=9; i<=21; i+=4) write(pipes[i], &curPlaying, INT_SIZE);
 
 		switch (curPlaying)
 		{
 			case 0:
-				read(pipes[10], players, PLAYERS_SIZE);
+				read(pipes[10], players+0, INT_SIZE);
 				break;
 			case 1:
-				read(pipes[14], players, PLAYERS_SIZE);
+				read(pipes[14], players+1, INT_SIZE);
 				break;
 			case 2:
-				read(pipes[18], players, PLAYERS_SIZE);
+				read(pipes[18], players+2, INT_SIZE);
 				break;
 			case 3:
-				read(pipes[22], players, PLAYERS_SIZE);
+				read(pipes[22], players+3, INT_SIZE);
 				break;
 			default:
 				break;
@@ -118,7 +126,7 @@ int main() {
 
 		while (wait(NULL)!=-1);
 		usleep(500000);
-	} while (1);
+	}
 	
 	closePipes(pipes);
 	exit(0);
